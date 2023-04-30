@@ -49,7 +49,19 @@ function draw() {
   image(art,-width/2,-height/2,width,height);
 }
 
+class Target {
+  constructor(x,y) {
 
+  }
+
+  update() {
+
+  }
+
+  display() {
+
+  }
+}
 
 class Vehicle {
   constructor(x,y) {
@@ -63,6 +75,7 @@ class Vehicle {
   seek(target) {
     let desired = p5.Vector.sub(target,this.location);
     desired.setMag(this.maxspeed);
+    // desired.mult(-1);    //fleeing instead of seeking
     let steer = p5.Vector.sub(desired,this.velocity);
     steer.limit(this.maxforce);
     this.applyForce(steer);
