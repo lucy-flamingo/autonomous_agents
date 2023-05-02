@@ -24,7 +24,7 @@ function setup() {
 
 
   v = new Vehicle(pg.width/2,pg.height/2);
-  t = createVector(pg.width/2,pg.height/2);
+  t = new Target(mouseX,mouseY);
 
 }
 
@@ -32,15 +32,15 @@ function draw() {
   background(0);
   art.clear();
 
-  t.x = map(mouseX,0,width,0,pg.width);
-  t.y = map(mouseY,0,height,0,pg.height);
+  //t.boundaries();
+  t.update();
+  //t.display();
 
-  v.seek(t);
+  //v.seek(t.location,t.velocity);
+  v.arrive(t.location);
   v.update();
   v.display();
 
-  console.log(mouseX);
-  
   art.shader(theShader);
   theShader.setUniform('tex0', pg);
   theShader.setUniform('u_resolution', [art.width,art.height]);
@@ -51,15 +51,39 @@ function draw() {
 
 class Target {
   constructor(x,y) {
+    this.location = createVector(x,y); 
+    this.velocity = createVector(random(15),random(15));
+  }
 
+  boundaries() {
+    if (this.location.x < 0) {
+      this.location.x = 0;
+      this.velocity.x *= -1;
+    }
+    if (this.location.x > pg.width) {
+      this.location.x = pg.width;
+      this.velocity.x *= -1;
+    }
+    if (this.location.y < 0) {
+      this.location.y = 0;
+      this.velocity.y *= -1;
+    }
+    if (this.location.y > pg.height) {
+      this.location.y = pg.height;
+      this.velocity.y *= -1;
+    }
   }
 
   update() {
-
+    // this.location.add(this.velocity);
+    this.location.x = map(mouseX,0,width,0,pg.width);
+    this.location.y = map(mouseY,0,height,0,pg.height);
   }
 
   display() {
-
+    pg.fill(0,255,255);
+    pg.noStroke();
+    //pg.ellipse(this.location.x,this.location.y,30,30);
   }
 }
 
@@ -72,10 +96,41 @@ class Vehicle {
     this.maxforce = 0.2;
   }
 
-  seek(target) {
+  // seek(target) {
+  //   let desired = p5.Vector.sub(target,this.location);
+  //   desired.setMag(this.maxspeed);
+  //   // desired.mult(-1);    //fleeing instead of seeking
+  //   let steer = p5.Vector.sub(desired,this.velocity);
+  //   steer.limit(this.maxforce);
+  //   this.applyForce(steer);
+  // }
+
+  // seek(target_loc,target_vel) {
+
+  //   let target = target_loc.add(target_vel);
+
+  //   let desired = p5.Vector.sub(target,this.location);
+  //   desired.setMag(this.maxspeed);
+  //   // desired.mult(-1);    //fleeing instead of seeking
+  //   let steer = p5.Vector.sub(desired,this.velocity);
+  //   steer.limit(this.maxforce);
+  //   this.applyForce(steer);
+  // }
+
+  arrive(target) {
     let desired = p5.Vector.sub(target,this.location);
-    desired.setMag(this.maxspeed);
-    // desired.mult(-1);    //fleeing instead of seeking
+    let d = desired.mag(); 
+    desired.normalize(); //normalize the vector
+
+    console.log(d);
+
+    if (d < 100) { // let the speed slow down when it gets closer to the target
+      let m = map(d,0,100,0,this.maxspeed);
+      desired.mult(m);
+    } else {
+      desired.mult(this.maxspeed);
+    }
+
     let steer = p5.Vector.sub(desired,this.velocity);
     steer.limit(this.maxforce);
     this.applyForce(steer);
@@ -86,6 +141,10 @@ class Vehicle {
   }
 
   update() {
+
+    // this.maxspeed = map(noise(this.location.x,this.location.y),0,1,5,15) + random();
+    // this.maxforce = map(noise(this.location.x+100,this.location.y-100),0,1,0.2,0.8) + random(0.1);
+
     this.velocity.add(this.acceleration);
     this.velocity.limit(this.maxspeed);
     this.location.add(this.velocity);
