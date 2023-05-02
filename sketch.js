@@ -30,6 +30,7 @@ function setup() {
 
 function draw() {
   background(0);
+  pg.background(240);
   art.clear();
 
   //t.boundaries();
@@ -37,7 +38,8 @@ function draw() {
   //t.display();
 
   //v.seek(t.location,t.velocity);
-  v.arrive(t.location);
+  let target = v.wandering();
+  v.arrive(target);
   v.update();
   v.display();
 
@@ -90,20 +92,20 @@ class Target {
 class Vehicle {
   constructor(x,y) {
     this.location = createVector(x,y); 
-    this.velocity = createVector(0,0);
+    this.velocity = createVector(random(-1,1),random(-1,1));
     this.acceleration = createVector(0,0);
     this.maxspeed = 5;
     this.maxforce = 0.2;
   }
 
-  // seek(target) {
-  //   let desired = p5.Vector.sub(target,this.location);
-  //   desired.setMag(this.maxspeed);
-  //   // desired.mult(-1);    //fleeing instead of seeking
-  //   let steer = p5.Vector.sub(desired,this.velocity);
-  //   steer.limit(this.maxforce);
-  //   this.applyForce(steer);
-  // }
+  seek(target) {
+    let desired = p5.Vector.sub(target,this.location);
+    desired.setMag(this.maxspeed);
+    // desired.mult(-1);    //fleeing instead of seeking
+    let steer = p5.Vector.sub(desired,this.velocity);
+    steer.limit(this.maxforce);
+    this.applyForce(steer);
+  }
 
   // seek(target_loc,target_vel) {
 
@@ -117,12 +119,40 @@ class Vehicle {
   //   this.applyForce(steer);
   // }
 
+  wandering() {
+    let v = this.velocity.copy();
+    v.normalize();
+    let stepR = 100; 
+    v.mult(stepR);
+
+    let t1 = this.location.copy();
+    t1.add(v);
+
+    pg.fill(0,0,255);
+    pg.noStroke();
+    pg.ellipse(t1.x,t1.y,20,20);
+    
+    let wanderR = 50;
+    pg.noFill();
+    pg.stroke(0);
+    pg.ellipse(t1.x,t1.y,wanderR*2,wanderR*2);
+
+    let a = random(TWO_PI);
+    let t2 = createVector(0,0);
+    t2.x = t1.x + wanderR*cos(a);
+    t2.y = t1.y + wanderR*sin(a);
+
+    pg.fill(0,255,0);
+    pg.noStroke();
+    pg.ellipse(t2.x,t2.y,20,20);
+
+    return t2;
+  }
+
   arrive(target) {
     let desired = p5.Vector.sub(target,this.location);
     let d = desired.mag(); 
     desired.normalize(); //normalize the vector
-
-    console.log(d);
 
     if (d < 100) { // let the speed slow down when it gets closer to the target
       let m = map(d,0,100,0,this.maxspeed);
