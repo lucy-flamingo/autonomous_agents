@@ -33,13 +33,11 @@ function draw() {
   pg.background(240);
   art.clear();
 
-  //t.boundaries();
-  t.update();
-  //t.display();
 
-  //v.seek(t.location,t.velocity);
+
   let target = v.wandering();
   v.arrive(target);
+  v.boundaries();
   v.update();
   v.display();
 
@@ -55,25 +53,6 @@ class Target {
   constructor(x,y) {
     this.location = createVector(x,y); 
     this.velocity = createVector(random(15),random(15));
-  }
-
-  boundaries() {
-    if (this.location.x < 0) {
-      this.location.x = 0;
-      this.velocity.x *= -1;
-    }
-    if (this.location.x > pg.width) {
-      this.location.x = pg.width;
-      this.velocity.x *= -1;
-    }
-    if (this.location.y < 0) {
-      this.location.y = 0;
-      this.velocity.y *= -1;
-    }
-    if (this.location.y > pg.height) {
-      this.location.y = pg.height;
-      this.velocity.y *= -1;
-    }
   }
 
   update() {
@@ -168,6 +147,33 @@ class Vehicle {
 
   applyForce(force) {
     this.acceleration.add(force);
+  }
+
+  boundaries() {
+    if (this.location.x < 75) {
+      let desired = createVector(this.maxspeed,this.velocity.y);
+      let steer = p5.Vector.sub(desired,this.velocity);
+      steer.limit(this.maxforce);
+      this.applyForce(steer);
+    }
+    if (this.location.x > pg.width - 75) {
+      let desired = createVector(-this.maxspeed,this.velocity.y);
+      let steer = p5.Vector.sub(desired,this.velocity);
+      steer.limit(this.maxforce);
+      this.applyForce(steer);
+    }
+    if (this.location.y < 75) {
+      let desired = createVector(this.velocity.x,this.maxspeed);
+      let steer = p5.Vector.sub(desired,this.velocity);
+      steer.limit(this.maxforce);
+      this.applyForce(steer);
+    }
+    if (this.location.y > pg.height - 75) {
+      let desired = createVector(this.velocity.x,-this.maxspeed);
+      let steer = p5.Vector.sub(desired,this.velocity);
+      steer.limit(this.maxforce);
+      this.applyForce(steer);
+    }
   }
 
   update() {
