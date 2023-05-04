@@ -41,9 +41,8 @@ function draw() {
 
 
   for (let v of vehicles) {
-    let desire = v.flow_field();
-
-    v.seek_d(desire);
+    v.cohesion(vehicles)
+    v.seek(createVector(map(mouseX,0,width,0,pg.width),map(mouseY,0,height,0,pg.height)));
     v.boundaries_flow();
     v.update();
     v.display();
@@ -64,34 +63,6 @@ class Vehicle {
     this.acceleration = createVector(0,0);
     this.maxspeed = 5;
     this.maxforce = 0.2;
-  }
-
-  seek(target) {
-    let desired = p5.Vector.sub(target,this.location);
-    desired.setMag(this.maxspeed);
-    // desired.mult(-1);    //fleeing instead of seeking
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
-  }
-
-  seek_d(desired) {
-    desired.setMag(this.maxspeed);
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
-  }
-
-  seek(target_loc,target_vel) {
-
-    let target = target_loc.add(target_vel);
-
-    let desired = p5.Vector.sub(target,this.location);
-    desired.setMag(this.maxspeed);
-    // desired.mult(-1);    //fleeing instead of seeking
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
   }
 
   wandering() {
@@ -127,9 +98,38 @@ class Vehicle {
   flow_field() {
     let xo = this.location.x;
     let yo = this.location.y;
-    let a = map(noise(xo,yo),0,1,0,1.5*TWO_PI); 
+    let to = frameCount/15;
+    let a = map(noise(xo,yo,to),0,1,0,1.5*TWO_PI); 
 
     return createVector(cos(a), sin(a));
+  }
+
+  seek(target) {
+    let desired = p5.Vector.sub(target,this.location);
+    desired.setMag(this.maxspeed);
+    // desired.mult(-1);    //fleeing instead of seeking
+    let steer = p5.Vector.sub(desired,this.velocity);
+    steer.limit(this.maxforce);
+    this.applyForce(steer);
+  }
+
+  seek_d(desired) {
+    desired.setMag(this.maxspeed);
+    let steer = p5.Vector.sub(desired,this.velocity);
+    steer.limit(this.maxforce);
+    this.applyForce(steer);
+  }
+
+  seek(target_loc,target_vel) {
+
+    let target = target_loc.add(target_vel);
+
+    let desired = p5.Vector.sub(target,this.location);
+    desired.setMag(this.maxspeed);
+    // desired.mult(-1);    //fleeing instead of seeking
+    let steer = p5.Vector.sub(desired,this.velocity);
+    steer.limit(this.maxforce);
+    this.applyForce(steer);
   }
 
   arrive(target) {
@@ -193,6 +193,48 @@ class Vehicle {
     if (this.location.y > pg.height) {
       this.location.y = 0;
     }     
+  }
+
+  separate(vehicles) {
+    let d_sep = 75; 
+    let count = 0;
+    let sum = createVector(0,0);
+    for (let other of vehicles) {
+      let d = this.location.dist(other.location);
+      if ((d>0) && (d < d_sep)) {
+        let diff = p5.Vector.sub(this.location,other.location);
+        diff.normalize();
+        diff.div(d);
+        sum.add(diff);
+        count += 1;
+      }
+    }
+
+    if (count > 0) {
+      sum.div(count);
+      this.seek_d(sum);
+    }
+  }
+
+  cohesion(vehicles) {
+    let d_sep = 75; 
+    let count = 0;
+    let sum = createVector(0,0);
+    for (let other of vehicles) {
+      let d = this.location.dist(other.location);
+      if ((d>0) && (d < d_sep)) {
+        let diff = p5.Vector.sub(this.location,other.location);
+        diff.normalize();
+        diff.div(d);
+        sum.add(diff);
+        count += 1;
+      }
+    }
+
+    if (count > 0) {
+      sum.div(count);
+      this.seek_d(sum);
+    }
   }
 
   update() {
