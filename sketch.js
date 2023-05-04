@@ -9,9 +9,12 @@ let seed;
 let v; //vehicle
 let t;
 
+let vehicles = []; 
+
 function setup() {
   seed = floor(random(1000));
   randomSeed(seed);
+  noiseSeed(seed);
   size = windowWidth > windowHeight ? windowHeight : windowWidth;
   size *= 0.9;
   createCanvas(size, size, WEBGL);
@@ -22,8 +25,12 @@ function setup() {
   pg = createGraphics(2048,2048);
   pg.background(240);
 
+  let n = 100; 
+  for (let i = 0; i < n; i++) {
+    v = new Vehicle(pg.width/2,pg.height/2);
+    vehicles.push(v);
+  }
 
-  v = new Vehicle(pg.width/2,pg.height/2);
 
 }
 
@@ -32,15 +39,15 @@ function draw() {
   pg.background(240);
   art.clear();
 
-  // let target = v.wandering();
 
-  let desire = v.flow();
+  for (let v of vehicles) {
+    let desire = v.flow_field();
 
-  v.seek_d(desire);
-  // v.arrive(target);
-  v.boundaries();
-  v.update();
-  v.display();
+    v.seek_d(desire);
+    v.boundaries_flow();
+    v.update();
+    v.display();
+  }
 
   art.shader(theShader);
   theShader.setUniform('tex0', pg);
@@ -117,10 +124,10 @@ class Vehicle {
     return t2;
   }
 
-  flow() {
+  flow_field() {
     let xo = this.location.x;
     let yo = this.location.y;
-    let a = map(noise(xo,yo),0,1,0,TWO_PI); 
+    let a = map(noise(xo,yo),0,1,0,1.5*TWO_PI); 
 
     return createVector(cos(a), sin(a));
   }
@@ -171,6 +178,21 @@ class Vehicle {
       steer.limit(this.maxforce);
       this.applyForce(steer);
     }
+  }
+
+  boundaries_flow() {
+    if (this.location.x < 0) {
+      this.location.x = pg.width;
+    }
+    if (this.location.x > pg.width) {
+      this.location.x = 0;
+    }
+    if (this.location.y < 0) {
+      this.location.y = pg.height
+    }
+    if (this.location.y > pg.height) {
+      this.location.y = 0;
+    }     
   }
 
   update() {
