@@ -41,8 +41,10 @@ function draw() {
 
 
   for (let v of vehicles) {
-    v.cohesion(vehicles)
-    v.seek(createVector(map(mouseX,0,width,0,pg.width),map(mouseY,0,height,0,pg.height)));
+    v.cohesion(vehicles);
+    v.separate(vehicles);
+    let desire = v.flow_field();
+    v.seek_d(desire);
     v.boundaries_flow();
     v.update();
     v.display();
@@ -107,7 +109,7 @@ class Vehicle {
   seek(target) {
     let desired = p5.Vector.sub(target,this.location);
     desired.setMag(this.maxspeed);
-    // desired.mult(-1);    //fleeing instead of seeking
+    //desired.mult(-1);    //fleeing instead of seeking
     let steer = p5.Vector.sub(desired,this.velocity);
     steer.limit(this.maxforce);
     this.applyForce(steer);
@@ -196,7 +198,7 @@ class Vehicle {
   }
 
   separate(vehicles) {
-    let d_sep = 75; 
+    let d_sep = 50; 
     let count = 0;
     let sum = createVector(0,0);
     for (let other of vehicles) {
@@ -217,16 +219,16 @@ class Vehicle {
   }
 
   cohesion(vehicles) {
-    let d_sep = 75; 
+    let d_coh = 1000; 
     let count = 0;
     let sum = createVector(0,0);
     for (let other of vehicles) {
       let d = this.location.dist(other.location);
-      if ((d>0) && (d < d_sep)) {
+      if (d > d_coh) {
         let diff = p5.Vector.sub(this.location,other.location);
         diff.normalize();
         diff.div(d);
-        sum.add(diff);
+        sum.sub(diff);
         count += 1;
       }
     }
