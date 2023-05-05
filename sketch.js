@@ -6,11 +6,7 @@ function preload(){
 }
 let seed;
 
-// flocking 
-// different rules for seek and approach and bounde 
-// boids with different steering behaviors in the same flock 
 
-let t;
 let boids = []; 
 
 function setup() {
@@ -27,7 +23,7 @@ function setup() {
   pg = createGraphics(1000,1000);
   pg.background(240);
 
-  let n = 500; 
+  let n = 700; 
   for (let i = 0; i < n; i++) {
     v = new Boid(random(pg.width),random(pg.height));
     boids.push(v);
@@ -42,11 +38,13 @@ function draw() {
 
 
   for (let v of boids) {
-    v.applyRules(boids)
+    v.swarm(boids)
     v.boundaries_flow();
     v.update();
     v.display();
   }
+
+
 
   art.shader(theShader);
   theShader.setUniform('tex0', pg);
@@ -54,6 +52,11 @@ function draw() {
   art.rect(0,0,width,height);
 
   image(art,-width/2,-height/2,width,height);
+
+  // if (frameCount > 50) {
+  //   noLoop();
+  // }
+
 }
 
 class Boid {
@@ -64,7 +67,7 @@ class Boid {
     this.maxspeed = 5;
     this.maxforce = 0.2;
     // this.r = random(15,40); 
-    this.r = 20;
+    this.r = 10;
   }
 
   //functions for creating targets and desires
@@ -103,9 +106,7 @@ class Boid {
     let xo = floor(this.location.x/10);
     let yo = floor(this.location.y/10);
     let to = frameCount/100;
-    let a = map(noise(xo/10,yo/10,to),0,1,0,0.5*TWO_PI); 
-
-    a += PI/2;
+    let a = map(noise(xo/10,yo/10,to),0,1,0,2*TWO_PI); 
 
     let desired = createVector(cos(a), sin(a));
 
@@ -136,9 +137,11 @@ class Boid {
 
     if (count > 0) {
       sum.div(count);
+      return this.steer_to_desire(sum);
+    } else {
+      return createVector(0,0);
     }
 
-    return this.steer_to_desire(sum);
   }
 
   cohesion(boids) {
@@ -158,9 +161,34 @@ class Boid {
 
     if (count > 0) {
       sum.div(count);
+      return this.steer_to_desire(sum);
+    } else {
+      return createVector(0,0);
+    }
+  }
+
+  align(boids) {
+    let d_sep = this.r*3; 
+    let count = 0;
+    let sum = createVector(0,0);
+    for (let other of boids) {
+      let d = this.location.dist(other.location);
+      if ((d>0) && (d < d_sep)) {
+        let diff = p5.Vector.sub(this.location,other.location);
+        diff.normalize();
+        diff.div(d);
+        sum.add(diff);
+        count += 1;
+      }
     }
 
-    return this.steer_to_desire(sum);
+    if (count > 0) {
+      sum.div(count);
+      return this.steer_to_desire(sum);
+    } else {
+      return createVector(0,0);
+    }
+
   }
 
   arrive(target) {
@@ -185,8 +213,21 @@ class Boid {
     return steer;
   }
 
-  applyRules(boids) {
+  swarm(boids) {
+    let flow = this.flow_field(); 
+    let separate = this.separate(boids);
+    let cohesion = this.cohesion(boids);
 
+    flow.mult(1);
+    separate.mult(3);
+    cohesion.mult(0.5);
+
+    this.applyForce(flow);
+    this.applyForce(separate);
+    this.applyForce(cohesion);
+  }
+
+  applyRules(boids) {
     let x = map(mouseX,0,width,0,pg.width);
     let y = map(mouseY,0,height,0,pg.height);
 
@@ -196,7 +237,7 @@ class Boid {
 
     flow.mult(1.2);
 
-    //this.applyForce(flow);
+    this.applyForce(flow);
     this.applyForce(separate);
     this.applyForce(cohesion);
   }
@@ -257,17 +298,17 @@ class Boid {
   display() {
     pg.rectMode(CENTER);
     pg.fill(255,0,0);
-    pg.noStroke();
+    // pg.noStroke();
     // pg.noFill();
-    // pg.stroke(255,0,0);
-    //pg.ellipse(this.location.x,this.location.y,this.r,this.r);
+    pg.stroke(255,0,0);
+    pg.ellipse(this.location.x,this.location.y,this.r,this.r);
 
-    let a = this.velocity.heading() + PI/2; 
-    pg.push();
-    pg.translate(this.location.x,this.location.y);
-    pg.rotate(a);
-    pg.rect(0,0,5,this.r);
-    pg.pop();
+    // let a = this.velocity.heading() + PI/2; 
+    // pg.push();
+    // pg.translate(this.location.x,this.location.y);
+    // pg.rotate(a);
+    // pg.rect(0,0,2,this.r);
+    // pg.pop();
 
   }
 
