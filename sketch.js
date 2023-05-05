@@ -6,10 +6,12 @@ function preload(){
 }
 let seed;
 
-let v; //vehicle
-let t;
+// flocking 
+// different rules for seek and approach and bounde 
+// boids with different steering behaviors in the same flock 
 
-let vehicles = []; 
+let t;
+let boids = []; 
 
 function setup() {
   seed = floor(random(1000));
@@ -22,29 +24,25 @@ function setup() {
   noStroke();
 
   art = createGraphics(size,size,WEBGL);
-  pg = createGraphics(2048,2048);
+  pg = createGraphics(1000,1000);
   pg.background(240);
 
-  let n = 100; 
+  let n = 500; 
   for (let i = 0; i < n; i++) {
-    v = new Vehicle(pg.width/2,pg.height/2);
-    vehicles.push(v);
+    v = new Boid(random(pg.width),random(pg.height));
+    boids.push(v);
   }
-
 
 }
 
 function draw() {
   background(0);
-  pg.background(240);
+  pg.background(230);
   art.clear();
 
 
-  for (let v of vehicles) {
-    v.cohesion(vehicles);
-    v.separate(vehicles);
-    let desire = v.flow_field();
-    v.seek_d(desire);
+  for (let v of boids) {
+    v.applyRules(boids)
     v.boundaries_flow();
     v.update();
     v.display();
@@ -58,14 +56,18 @@ function draw() {
   image(art,-width/2,-height/2,width,height);
 }
 
-class Vehicle {
+class Boid {
   constructor(x,y) {
     this.location = createVector(x,y); 
     this.velocity = createVector(random(-1,1),random(-1,1));
     this.acceleration = createVector(0,0);
     this.maxspeed = 5;
     this.maxforce = 0.2;
+    // this.r = random(15,40); 
+    this.r = 20;
   }
+
+  //functions for creating targets and desires
 
   wandering() {
     let v = this.velocity.copy();
@@ -98,40 +100,67 @@ class Vehicle {
   }
 
   flow_field() {
-    let xo = this.location.x;
-    let yo = this.location.y;
-    let to = frameCount/15;
-    let a = map(noise(xo,yo,to),0,1,0,1.5*TWO_PI); 
+    let xo = floor(this.location.x/10);
+    let yo = floor(this.location.y/10);
+    let to = frameCount/100;
+    let a = map(noise(xo/10,yo/10,to),0,1,0,0.5*TWO_PI); 
 
-    return createVector(cos(a), sin(a));
+    a += PI/2;
+
+    let desired = createVector(cos(a), sin(a));
+
+    return this.steer_to_desire(desired);
   }
 
+  //functions creating forces 
   seek(target) {
     let desired = p5.Vector.sub(target,this.location);
-    desired.setMag(this.maxspeed);
     //desired.mult(-1);    //fleeing instead of seeking
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
+    return this.steer_to_desire(desired);
   }
 
-  seek_d(desired) {
-    desired.setMag(this.maxspeed);
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
+  separate(boids) {
+    let d_sep = this.r*3; 
+    let count = 0;
+    let sum = createVector(0,0);
+    for (let other of boids) {
+      let d = this.location.dist(other.location);
+      if ((d>0) && (d < d_sep)) {
+        let diff = p5.Vector.sub(this.location,other.location);
+        diff.normalize();
+        diff.div(d);
+        sum.add(diff);
+        count += 1;
+      }
+    }
+
+    if (count > 0) {
+      sum.div(count);
+    }
+
+    return this.steer_to_desire(sum);
   }
 
-  seek(target_loc,target_vel) {
+  cohesion(boids) {
+    let d_coh = 1000; 
+    let count = 0;
+    let sum = createVector(0,0);
+    for (let other of boids) {
+      let d = this.location.dist(other.location);
+      if (d > d_coh) {
+        let diff = p5.Vector.sub(this.location,other.location);
+        diff.normalize();
+        diff.div(d);
+        sum.sub(diff);
+        count += 1;
+      }
+    }
 
-    let target = target_loc.add(target_vel);
+    if (count > 0) {
+      sum.div(count);
+    }
 
-    let desired = p5.Vector.sub(target,this.location);
-    desired.setMag(this.maxspeed);
-    // desired.mult(-1);    //fleeing instead of seeking
-    let steer = p5.Vector.sub(desired,this.velocity);
-    steer.limit(this.maxforce);
-    this.applyForce(steer);
+    return this.steer_to_desire(sum);
   }
 
   arrive(target) {
@@ -146,9 +175,30 @@ class Vehicle {
       desired.mult(this.maxspeed);
     }
 
+    return this.steer_to_desire(desired);
+  }
+
+  steer_to_desire(desired) {
+    desired.setMag(this.maxspeed);
     let steer = p5.Vector.sub(desired,this.velocity);
     steer.limit(this.maxforce);
-    this.applyForce(steer);
+    return steer;
+  }
+
+  applyRules(boids) {
+
+    let x = map(mouseX,0,width,0,pg.width);
+    let y = map(mouseY,0,height,0,pg.height);
+
+    let flow = this.flow_field(createVector(x,y)); 
+    let separate = this.separate(boids);
+    let cohesion = this.cohesion(boids);
+
+    flow.mult(1.2);
+
+    //this.applyForce(flow);
+    this.applyForce(separate);
+    this.applyForce(cohesion);
   }
 
   applyForce(force) {
@@ -197,48 +247,6 @@ class Vehicle {
     }     
   }
 
-  separate(vehicles) {
-    let d_sep = 50; 
-    let count = 0;
-    let sum = createVector(0,0);
-    for (let other of vehicles) {
-      let d = this.location.dist(other.location);
-      if ((d>0) && (d < d_sep)) {
-        let diff = p5.Vector.sub(this.location,other.location);
-        diff.normalize();
-        diff.div(d);
-        sum.add(diff);
-        count += 1;
-      }
-    }
-
-    if (count > 0) {
-      sum.div(count);
-      this.seek_d(sum);
-    }
-  }
-
-  cohesion(vehicles) {
-    let d_coh = 1000; 
-    let count = 0;
-    let sum = createVector(0,0);
-    for (let other of vehicles) {
-      let d = this.location.dist(other.location);
-      if (d > d_coh) {
-        let diff = p5.Vector.sub(this.location,other.location);
-        diff.normalize();
-        diff.div(d);
-        sum.sub(diff);
-        count += 1;
-      }
-    }
-
-    if (count > 0) {
-      sum.div(count);
-      this.seek_d(sum);
-    }
-  }
-
   update() {
     this.velocity.add(this.acceleration);
     this.velocity.limit(this.maxspeed);
@@ -247,9 +255,20 @@ class Vehicle {
   }
 
   display() {
+    pg.rectMode(CENTER);
     pg.fill(255,0,0);
     pg.noStroke();
-    pg.ellipse(this.location.x,this.location.y,20,20);
+    // pg.noFill();
+    // pg.stroke(255,0,0);
+    //pg.ellipse(this.location.x,this.location.y,this.r,this.r);
+
+    let a = this.velocity.heading() + PI/2; 
+    pg.push();
+    pg.translate(this.location.x,this.location.y);
+    pg.rotate(a);
+    pg.rect(0,0,5,this.r);
+    pg.pop();
+
   }
 
 }
