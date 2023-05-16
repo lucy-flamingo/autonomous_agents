@@ -9,31 +9,54 @@ let seed;
 
 let boids = []; 
 
+let palette = 
+        [
+        "#AECCE5",
+        "#1B67B2",
+        "#c0da7f",
+        "#377f3f",
+        "#99270D",
+        "#e83014",
+        "#fbbb00",
+        "#ff6920",
+        "#D6CEC7",
+        "#EFE3DA",
+        "#F0F0F0",
+        "#2D2D2D",
+      ];
+
 function setup() {
   seed = floor(random(1000));
   randomSeed(seed);
   noiseSeed(seed);
+
+  ww = 1080/2;
+  wh = 1920/2;
+
   size = windowWidth > windowHeight ? windowHeight : windowWidth;
   size *= 0.9;
-  createCanvas(size, size, WEBGL);
+
+  createCanvas(ww,wh, WEBGL);
   pixelDensity(2);
   noStroke();
 
-  art = createGraphics(size,size,WEBGL);
-  pg = createGraphics(1000,1000);
+  art = createGraphics(ww,wh,WEBGL);
+  pg = createGraphics(ww,wh);
   pg.background(240);
 
-  let n = 700; 
+  let n = 750; 
   for (let i = 0; i < n; i++) {
     v = new Boid(random(pg.width),random(pg.height));
     boids.push(v);
   }
 
+  frameRate(30);
+
 }
 
 function draw() {
   background(0);
-  pg.background(230);
+  pg.background(230,230,230,200);
   art.clear();
 
 
@@ -64,10 +87,12 @@ class Boid {
     this.location = createVector(x,y); 
     this.velocity = createVector(random(-1,1),random(-1,1));
     this.acceleration = createVector(0,0);
-    this.maxspeed = 5;
+    this.maxspeed = 3.5;
     this.maxforce = 0.2;
-    // this.r = random(15,40); 
-    this.r = 10;
+    //this.r = random(2,8);
+    this.r = randomGaussian(8,3.7);
+
+    this.c = color(random(palette));
   }
 
   //functions for creating targets and desires
@@ -297,18 +322,18 @@ class Boid {
 
   display() {
     pg.rectMode(CENTER);
-    pg.fill(255,0,0);
-    // pg.noStroke();
+    pg.fill(this.c);
+    pg.noStroke();
     // pg.noFill();
-    pg.stroke(255,0,0);
-    pg.ellipse(this.location.x,this.location.y,this.r,this.r);
+    // pg.stroke(255,0,0);
+    // pg.ellipse(this.location.x,this.location.y,this.r,this.r);
 
-    // let a = this.velocity.heading() + PI/2; 
-    // pg.push();
-    // pg.translate(this.location.x,this.location.y);
-    // pg.rotate(a);
-    // pg.rect(0,0,2,this.r);
-    // pg.pop();
+    let a = this.velocity.heading() + PI/2; 
+    pg.push();
+    pg.translate(this.location.x,this.location.y);
+    pg.rotate(a);
+    pg.rect(0,0,this.r/2,this.r);
+    pg.pop();
 
   }
 
@@ -326,19 +351,61 @@ function doubleClicked() {
 
 function windowResized() {
   size = windowWidth > windowHeight ? windowHeight : windowWidth;
-  size *= 0.9;
   resizeCanvas(size,size);  
   art.resizeCanvas(size,size);
 }
 
 function exportHighRes() {
-  art.resizeCanvas(5000,5000);
+  scaleOutput = 5;
+  art.resizeCanvas(art.width*scaleOutput,art.height*scaleOutput);
   draw();
-  save(art, seed.toString(), 'png');
+  save(art, sd.toString(), 'png');
   art.resizeCanvas(size,size);
   draw();
 }
 
+function exportLowRes() {
+  scaleOutput = 1;
+  art.resizeCanvas(art.width*scaleOutput,art.height*scaleOutput);
+  draw();
+  save(art, sd.toString(), 'png');
+
+  art.resizeCanvas(size,size);
+  draw();
+}
+
+function exportFrames(n) {
+  var zip = new JSZip();
+  frameRate(1);
+  function captureFrame() {
+    var image = art.canvas.toDataURL('image/png');
+    var frameData = image.split(',')[1];
+    var binaryData = atob(frameData);
+    var dataArray = new Uint8Array(binaryData.length);
+
+    for (var i = 0; i < binaryData.length; i++) {
+      dataArray[i] = binaryData.charCodeAt(i);
+    }
+
+    return dataArray;
+  }
+
+  for (let i = 0; i < n; i++) {
+    draw(); 
+    var frameData = captureFrame();
+    var frameNumber = (i + 1).toString().padStart(4, '0'); 
+    var fileName = 'frame_' + frameNumber + '.png';
+    zip.file(fileName, frameData, { binary: true });
+  }
+
+  frameRate(60);
+  zip.generateAsync({ type: 'blob' }).then(function (content) {
+    saveAs(content, 'animation_frames.zip');
+  });
+}
+
 function keyReleased() {
   if (key == 'e' || key == 'E') exportHighRes();
+  if (key == 's' || key == 'S') exportLowRes();
+  if (key == 'v' || key == 'V') exportFrames(150);
 }
