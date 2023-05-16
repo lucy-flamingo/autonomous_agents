@@ -38,25 +38,27 @@ function setup() {
   pg = createGraphics(size.x,size.y);
   pg.background(240);
 
-  let n = 750; 
+  let n = 500; 
   for (let i = 0; i < n; i++) {
-    v = new Boid(random(pg.width),random(pg.height));
+    v = new Boid(pg.width/2 + random(-20,20),pg.height/2 + random(-20,20));
     boids.push(v);
   }
 
   frameRate(30);
 
+
 }
 
 function draw() {
   background(0);
-  pg.background(230,230,230,200);
+  pg.background(230,230,230,150);
   art.clear();
 
 
   for (let v of boids) {
     v.swarm(boids)
-    v.boundaries_flow();
+    // v.boundaries_flow();
+    v.boundaries();
     v.update();
     v.display();
   }
@@ -78,7 +80,8 @@ class Boid {
     this.maxspeed = 3.5;
     this.maxforce = 0.2;
     //this.r = random(2,8);
-    this.r = randomGaussian(8,3.7);
+    this.r = randomGaussian(35,15);
+    //this.r = 50;
 
     this.c = color(random(palette));
   }
@@ -230,9 +233,9 @@ class Boid {
     let separate = this.separate(boids);
     let cohesion = this.cohesion(boids);
 
-    flow.mult(1);
-    separate.mult(3);
-    cohesion.mult(0.5);
+    flow.mult(0.9);
+    separate.mult(1);
+    cohesion.mult(3);
 
     this.applyForce(flow);
     this.applyForce(separate);
@@ -308,20 +311,20 @@ class Boid {
   }
 
   display() {
-    pg.rectMode(CENTER);
-    pg.fill(this.c);
-    pg.noStroke();
-    // pg.noFill();
-    // pg.stroke(255,0,0);
-    // pg.ellipse(this.location.x,this.location.y,this.r,this.r);
 
-    let a = this.velocity.heading() + PI/2; 
-    pg.push();
-    pg.translate(this.location.x,this.location.y);
-    pg.rotate(a);
-    pg.rect(0,0,this.r/2,this.r);
-    pg.pop();
+    pg.noFill();
+    pg.stroke("#1B67B2");
+    pg.ellipse(this.location.x,this.location.y,this.r,this.r);
 
+    // pg.rectMode(CENTER);
+    // pg.fill(this.c);
+    // pg.noStroke();
+    // let a = this.velocity.heading() + PI/2; 
+    // pg.push();
+    // pg.translate(this.location.x,this.location.y);
+    // pg.rotate(a);
+    // pg.rect(0,0,this.r/2,this.r);
+    // pg.pop();
   }
 
 }
