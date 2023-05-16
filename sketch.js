@@ -5,10 +5,9 @@ function preload(){
   theShader = loadShader('shader.vert', 'shader.frag');
 }
 let seed;
-
+let ar = 1920/1080;
 
 let boids = []; 
-
 let palette = 
         [
         "#AECCE5",
@@ -30,18 +29,13 @@ function setup() {
   randomSeed(seed);
   noiseSeed(seed);
 
-  ww = 1080/2;
-  wh = 1920/2;
-
-  size = windowWidth > windowHeight ? windowHeight : windowWidth;
-  size *= 0.9;
-
-  createCanvas(ww,wh, WEBGL);
+  size = calc_size(ar);
+  createCanvas(size.x,size.y, WEBGL);
   pixelDensity(2);
   noStroke();
 
-  art = createGraphics(ww,wh,WEBGL);
-  pg = createGraphics(ww,wh);
+  art = createGraphics(size.x,size.y, WEBGL);
+  pg = createGraphics(size.x,size.y);
   pg.background(240);
 
   let n = 750; 
@@ -67,18 +61,12 @@ function draw() {
     v.display();
   }
 
-
-
   art.shader(theShader);
   theShader.setUniform('tex0', pg);
   theShader.setUniform('u_resolution', [art.width,art.height]);
   art.rect(0,0,width,height);
 
   image(art,-width/2,-height/2,width,height);
-
-  // if (frameCount > 50) {
-  //   noLoop();
-  // }
 
 }
 
@@ -96,7 +84,6 @@ class Boid {
   }
 
   //functions for creating targets and desires
-
   wandering() {
     let v = this.velocity.copy();
     v.normalize();
@@ -349,10 +336,16 @@ function doubleClicked() {
     fullscreen(!fs);
 }
 
+function calc_size(ar) {
+  size = createVector(0,0);
+  windowHeight >= ar * windowWidth ? (size.x = windowWidth, size.y = ar * windowWidth) : (size.y = windowHeight, size.x = windowHeight / ar);
+  return size;
+}
+
 function windowResized() {
-  size = windowWidth > windowHeight ? windowHeight : windowWidth;
-  resizeCanvas(size,size);  
-  art.resizeCanvas(size,size);
+  size = calc_size(ar);
+  resizeCanvas(size.x,size.y);  
+  art.resizeCanvas(size.x,size.y);
 }
 
 function exportHighRes() {
